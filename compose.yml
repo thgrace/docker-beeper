@@ -1,11 +1,6 @@
 services:
   beeper:
-    build:
-      context: .
-      args:
-        # Pin a known-good Beeper Desktop version. Leave empty to fall back to
-        # scraping the latest version from beeper.com/changelog/desktop.
-        BEEPER_VERSION: ""
+    build: .
     container_name: beeper
     environment:
       - PUID=1000
@@ -15,13 +10,6 @@ services:
       - USE_LEGACY_BIN=false
     volumes:
       - ./config:/config
-    # 23373 is the Beeper Desktop local REST + WebSocket API. Auth is a single
-    # bearer token with no scoping, so do NOT publish it to the host. Reach it
-    # from peer containers via the docker network instead, e.g.:
-    #   networks: [beeper_net]
-    #   curl -H "Authorization: Bearer $TOKEN" http://beeper:23373/v1/info
-    # NOTE: the API only binds to localhost until you flip Settings →
-    # Developers → Beeper Desktop API → Advanced → Remote Access in the web UI.
     ports:
       - 3003:3000
       - 3005:3001

@@ -41,55 +41,6 @@ services:
     restart: unless-stopped
 ```
 
-## Programmatic access (Beeper Desktop API)
-
-This fork is configured for programmatic use of the [Beeper Desktop API](https://developers.beeper.com/desktop-api/) — REST + experimental WebSocket on port `23373` — in addition to the human-facing web UI.
-
-### What changed in this fork
-
-- **`BEEPER_VERSION` is now a build arg.** Pin it to a known-good version so a freshly rebuilt image doesn't pull a Beeper Desktop release with a breaking API change. The original "scrape the changelog page for the latest version" path is preserved as a fallback when the arg is empty.
-
-  ```bash
-  docker build --build-arg BEEPER_VERSION=4.x.y -t docker-beeper:pinned .
-  ```
-
-- **Port `23373` is exposed** so peer containers on the same docker network can reach the Beeper Desktop local API once Remote Access is enabled (see below).
-
-### First-run setup
-
-1. Bring the container up, open the web UI (`http://host:3003`), log in to Beeper and link your networks.
-2. Open **Settings → Developers → Beeper Desktop API** in the Beeper app:
-   - Click **+** next to *Approved connections* to mint an access token. Save it.
-   - Open **Advanced settings** and toggle **Remote Access** on. This flips the API listener from `localhost:23373` to `0.0.0.0:23373` so peer containers on the docker network can reach it. ([docs](https://developers.beeper.com/desktop-api/advanced/remote-access))
-3. Drop the token into your peer container's environment (or your secret store).
-4. Verify: `curl -H "Authorization: Bearer $TOKEN" http://beeper:23373/v1/info`
-
-### Reaching the API from another container
-
-```yaml
-services:
-  beeper:
-    image: ghcr.io/thgrace/docker-beeper:latest
-    networks: [beeper_net]
-    # ...
-
-  myapp:
-    image: myapp:latest
-    networks: [beeper_net]
-    environment:
-      - BEEPER_API_URL=http://beeper:23373
-      - BEEPER_API_TOKEN=<token from Settings → Developers>
-
-networks:
-  beeper_net: {}
-```
-
-> **Do not publish 23373 to the host or to a public network.** Auth is a single bearer token with no scoping; anyone who can reach the port and guess (or steal) the token has full read/write on every chat in the linked account. Beeper's own docs warn that Remote Access *"can expose chat history and might allow others to send messages on your behalf."* Keep it on a private docker network only.
-
-### Known limitation: auto-update
-
-Beeper Desktop self-updates at runtime via Electron's auto-updater. Pinning `BEEPER_VERSION` controls the *initial install* only — the running app may still upgrade itself, which can break the experimental WebSocket API contract. Disabling Electron auto-update reliably requires a Beeper-specific flag or config edit that this fork does **not** yet implement. If you depend on a specific Beeper version, the pragmatic mitigation is to mount `/config` read-only after the initial setup, or to recreate the container from a pinned image on a known cadence and accept brief windows of breakage.
-
 ## Legacy and Beta Apps
 
 ⚠️ The last version of this image that is compatible with `USE_LEGACY_BIN` and v3 of beeper is [b16f940](https://github.com/zachatrocity/docker-beeper/pkgs/container/docker-beeper/393086004?tag=sha-b16f940b40f8e2f04d9ecd587d780d407b385ca2) 

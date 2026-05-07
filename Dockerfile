@@ -3,18 +3,12 @@ FROM ghcr.io/linuxserver/baseimage-selkies:debiantrixie
 # set version label
 # ARG BUILD_DATE
 # ARG VERSION
+# ARG BEEPER_VERSION
 # LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
 LABEL maintainer="zachatrocity"
 
 # https://download.beeper.com/linux/
 # legacy appimage: beeper-3.110.1x86_64.AppImage
-
-# Pin Beeper Desktop version at build time for reproducibility. The Desktop API
-# (especially the WebSocket interface) is documented as experimental and may
-# change between releases, so building unpinned-against-latest is risky for
-# downstream programmatic consumers. Leave empty to fall back to the legacy
-# changelog-scrape behavior.
-ARG BEEPER_VERSION=
 
 # title
 ENV TITLE=Beeper
@@ -37,8 +31,7 @@ RUN \
     python3-xdg && \
   cd /tmp && \
   echo "**** install beeper ****" && \
-  BEEPER_VERSION="${BEEPER_VERSION:-$(curl -s 'https://www.beeper.com/changelog/desktop' | grep -o 'class="version-text[^>]*>[^<]*</a>' | head -n 1 | sed 's/.*v\([0-9.]*\).*/\1/')}" && \
-  echo "Using Beeper version: ${BEEPER_VERSION}" && \
+  BEEPER_VERSION=$(curl -s 'https://www.beeper.com/changelog/desktop' | grep -o 'class="version-text[^>]*>[^<]*</a>' | head -n 1 | sed 's/.*v\([0-9.]*\).*/\1/') && \
   curl -o \
     /tmp/beeper.app -L \
     "https://beeper-desktop.download.beeper.com/builds/Beeper-$BEEPER_VERSION-x86_64.AppImage" && \
@@ -61,10 +54,5 @@ RUN \
 COPY /root /
 
 # ports and volumes
-# 3000 / 3001: KasmVNC/Selkies web UI (HTTP / HTTPS)
-# 23373: Beeper Desktop local API (REST + experimental WebSocket).
-#        Bearer-token auth only — do NOT publish this to the host. Reach it
-#        from peer containers on the same docker network.
 EXPOSE 3000
-EXPOSE 23373
 VOLUME /config
